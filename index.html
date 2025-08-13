@@ -48,7 +48,8 @@
       <div class="glass rounded-2xl p-6">
         <div id="dropzone" class="dropzone rounded-xl p-6 text-center cursor-pointer">
           <p class="text-slate-300">Drag & drop your reference loop here<br/><span class="text-xs">or click to choose a file</span></p>
-          <input id="fileInput" type="file" accept="audio/*" class="hidden" />
+          <p class="mt-2 text-xs text-slate-400">Tip: dragging directly from the Splice app may pass a link, not an audio file. If nothing happens, first download/export the loop to your disk, then drag the <strong>.wav/.aif/.mp3</strong> from Finder/Explorer.</p>
+          <input id="fileInput" type="file" accept=".wav,.aif,.aiff,.mp3,.flac,.m4a,audio/*" class="hidden" />
         </div>
         <div class="mt-6 grid grid-cols-2 gap-4 text-sm">
           <div class="glass rounded-xl p-3">
@@ -331,19 +332,41 @@
     const downloadBtn = document.getElementById('downloadBtn');
 
     function handleFiles(files){
-      const f = files?.[0]; if(!f) return;
+      const f = files?.[0];
+      if(!f){ db('No audio file detected. If dragging from Splice, export/download first, then drag the .wav from your disk.'); return; }
+      if(!f.type.startsWith('audio') && !/\.(wav|aif|aiff|mp3|flac|m4a)$/i.test(f.name||'')){
+        db('This item is not an audio file. Please drag a .wav/.aif/.mp3 from your disk.');
+        return;
+      }
       db('Decoding…');
       f.arrayBuffer().then(buf=> AC.decodeAudioData(buf)).then(decoded=>{
         referenceBuffer = decoded; db('Ready. Click Analyze.');
         analyzeBtn.disabled = false; generateBtn.disabled = true; playBtn.disabled = true;
-      }).catch(e=>{ console.error(e); db('Failed to decode audio. Try a different file.'); });
+      }).catch(e=>{ console.error(e); db('Failed to decode audio. Try a different file or format.'); });
     }
 
     dropzone.addEventListener('click', ()=> fileInput.click());
     fileInput.addEventListener('change', e=> handleFiles(e.target.files));
     dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
     dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
-    dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+    dropzone.addEventListener('drop', e=>{
+      e.preventDefault(); dropzone.classList.remove('drag');
+      const dt = e.dataTransfer;
+      if (dt?.items && dt.items.length){
+        // Prefer items API to filter real files
+        const fileItems = Array.from(dt.items).filter(it=> it.kind==='file');
+        if (fileItems.length){
+          const file = fileItems[0].getAsFile();
+          if (file) return handleFiles([file]);
+        }
+        // If it's a link/URL from an app, inform user
+        const uri = dt.getData('text/uri-list') || dt.getData('text/plain');
+        if (uri){ db('Detected a link, not a file. Please download/export the loop, then drag the .wav from your disk.'); return; }
+      }
+      // Fallback to files list
+      if (dt?.files && dt.files.length) return handleFiles(dt.files);
+      db('No audio file detected. If dragging from Splice, export/download first.');
+    }); dropzone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
 
     analyzeBtn.addEventListener('click', async ()=>{
       if(!referenceBuffer) return; db('Analyzing tempo…');
