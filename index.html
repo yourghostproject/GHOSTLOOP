@@ -1,323 +1,240 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>The Ghost Project — Splice‑Inspired Loop Generator</title>
-  <meta name="description" content="Drop a reference loop (e.g., from Splice). We analyze tempo & tonality locally (first 6s for speed) and generate a brand‑new, royalty‑free loop inspired by the vibe." />
-  <link rel="icon" href="data:," />
-  <!-- Tailwind (CDN for prototype) -->
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>GHOSTLOOP — The Ghost Project</title>
+  <meta name="description" content="Drag a loop. We analyze the first seconds, detect onsets, slice tiny grains from your loop and re‑arrange them into a brand‑new pattern — locally in your browser."/>
+  <link rel="icon" href="data:,"/>
+  <!-- Minimal YGP neon aesthetic via Tailwind CDN for speed -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Tone.js for synthesis & recording -->
+  <!-- Audio libs -->
   <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+  <script src="https://unpkg.com/meyda/dist/web/meyda.min.js"></script>
+  <script src="https://unpkg.com/web-audio-beat-detector/dist/index.umd.js"></script>
   <style>
-    :root{ --bg:#070a0f; --ink:#e6f0ff; --muted:#9cb4cc; --accent:#00e5ff; --accent2:#a855f7; }
-    html,body{ height:100%; background: radial-gradient(1200px 800px at 80% -10%, rgba(168,85,247,.12), transparent), radial-gradient(1000px 700px at -10% 110%, rgba(0,229,255,.10), transparent), var(--bg); color:var(--ink); }
-    .glass{ background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px); }
-    .dropzone{ border:2px dashed rgba(255,255,255,.2); transition: all .2s ease; }
-    .dropzone.drag{ border-color: var(--accent); background: rgba(0,229,255,.06); }
-    .mono{ font-feature-settings:"ss01" on, "cv01" on; }
-    .tag{ color:var(--accent); }
-    .ring-accent{ box-shadow: 0 0 0 2px rgba(0,229,255,.35); }
+    :root{ --bg:#070a0f; --ink:#e6f0ff; --accent:#00e5ff; --accent2:#a855f7; }
+    html,body{height:100%;background:
+      radial-gradient(1200px 800px at 80% -10%, rgba(168,85,247,.12), transparent),
+      radial-gradient(1000px 700px at -10% 110%, rgba(0,229,255,.10), transparent),
+      var(--bg);color:var(--ink)}
+    .title{font-weight:900;letter-spacing:.4px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+    .drop{border:2px dashed rgba(255,255,255,.22);border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:.2s}
+    .drop.drag{border-color:var(--accent);background:rgba(0,229,255,.06)}
+    .glass{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
+    .link{color:var(--accent)}
   </style>
 </head>
-<body class="min-h-screen">
-  <header class="max-w-6xl mx-auto px-4 pt-10 flex items-center justify-between">
-    <div class="text-xl font-semibold tracking-wide bg-clip-text text-transparent" style="background-image:linear-gradient(90deg,var(--accent),var(--accent2));">THE GHOST PROJECT</div>
-    <nav class="text-sm text-slate-300 space-x-6">
-      <a href="#how" class="hover:text-white">Our Creative Process</a>
-      <a href="#legal" class="hover:text-white">Use & Legal</a>
-      <a href="#make" class="hover:text-white">Generator</a>
-    </nav>
-  </header>
-
-  <main class="max-w-6xl mx-auto px-4 pb-24">
-    <section class="mt-10 grid md:grid-cols-2 gap-8 items-center">
-      <div>
-        <h1 class="text-4xl md:text-5xl font-extrabold leading-tight">Splice‑Inspired → <span class="tag">Original</span> Loop</h1>
-        <p class="mt-4 text-slate-300 md:text-lg">Drop a reference loop. We analyze its tempo & broad tonality and then <span class="font-semibold">generate a fresh, royalty‑free loop</span> inspired by the vibe — <span class="underline decoration-dotted">created from scratch</span>, not sampled. Everything runs <strong>locally</strong> in your browser (we analyze the first <strong>6s</strong> for speed).</p>
-        <ul class="mt-6 text-slate-300 text-sm list-disc list-inside">
-          <li>No upload — audio stays on your machine</li>
-          <li>Auto‑detect BPM & rough key/mode</li>
-          <li>One‑click synth/bass/drums generator</li>
-          <li>Export WAV</li>
-        </ul>
-        <div class="mt-6 text-xs text-slate-400">Prototype for creators. For commercial projects, customize patterns and sounds to avoid style overlap.</div>
+<body>
+  <main class="max-w-xl mx-auto p-5 min-h-screen flex flex-col gap-6">
+    <h1 class="title text-4xl text-center mt-8">GHOSTLOOP</h1>
+    <section id="panel" class="glass rounded-2xl p-4">
+      <div id="dz" class="drop">
+        <p class="text-center">Drag & drop a <b>.wav/.aif/.mp3</b><br/><span class="text-xs text-slate-400">Nothing is uploaded. All processing is local.</span></p>
+        <input id="file" class="hidden" type="file" accept=".wav,.aif,.aiff,.mp3,.flac,.m4a,audio/*"/>
       </div>
-      <div class="glass rounded-2xl p-6">
-        <div id="dropzone" class="dropzone rounded-xl p-6 text-center cursor-pointer">
-          <p class="text-slate-300">Drag & drop your reference loop here<br/><span class="text-xs">or click to choose a file</span></p>
-          <p class="mt-2 text-xs text-slate-400">Tip: dragging directly from the Splice app may pass a link, not an audio file. If nothing happens, first download/export the loop, then drag the <strong>.wav/.aif/.mp3</strong> from Finder/Explorer.</p>
-          <input id="fileInput" type="file" accept=".wav,.aif,.aiff,.mp3,.flac,.m4a,audio/*" class="hidden" />
-        </div>
-        <div class="mt-6 grid grid-cols-2 gap-4 text-sm">
-          <div class="glass rounded-xl p-3">
-            <div class="text-slate-400">Detected BPM</div>
-            <div id="bpm" class="text-2xl font-semibold mono">—</div>
-          </div>
-          <div class="glass rounded-xl p-3">
-            <div class="text-slate-400">Estimated Key</div>
-            <div id="key" class="text-2xl font-semibold mono">—</div>
-          </div>
-        </div>
-        <div class="mt-6 grid sm:grid-cols-3 gap-3">
-          <button id="analyzeBtn" class="glass rounded-xl py-3 hover:ring-accent" disabled>Analyze</button>
-          <button id="generateBtn" class="glass rounded-xl py-3 hover:ring-accent" disabled>Generate Loop</button>
-          <button id="downloadBtn" class="glass rounded-xl py-3 hover:ring-accent" disabled>Download WAV</button>
-        </div>
-        <div class="mt-4 flex items-center gap-4">
-          <button id="playBtn" class="text-sm underline decoration-dotted" disabled>Play</button>
-          <span id="status" class="text-xs text-slate-400">Waiting for file…</span>
-        </div>
+      <p id="status" class="text-xs text-slate-400 mt-3">Waiting for file…</p>
+      <div id="actions" class="hidden mt-2 text-sm">
+        <button id="play" class="underline">Play / Pause</button>
+        <span class="mx-2">·</span>
+        <a id="dl" class="link" href="#" download="ghostloop.wav">Download WAV</a>
       </div>
     </section>
-
-    <section id="how" class="mt-16">
-      <h2 class="text-2xl font-bold">Our Creative Process</h2>
-      <ol class="mt-4 space-y-2 text-slate-300">
-        <li><span class="tag">1.</span> We compute a lightweight onset envelope and autocorrelation to guess the BPM.</li>
-        <li><span class="tag">2.</span> We analyze pitch‑class energy to estimate a rough key & mode.</li>
-        <li><span class="tag">3.</span> We seed a new pattern (drums/bass/chords) from those stats — <em>never copying the melody.</em></li>
-        <li><span class="tag">4.</span> We synthesize and render an original loop you can download.</li>
-      </ol>
-    </section>
-
-    <section id="legal" class="mt-16">
-      <h2 class="text-2xl font-bold">Use & Legal</h2>
-      <p class="mt-2 text-slate-300">This tool generates <strong>new audio</strong> based on broad features (tempo/tonality/rhythm density). It does <em>not</em> upload or reuse your reference audio. You’re responsible for your own compliance with sample licenses (e.g., Splice). Avoid replicating a distinctive melody/hook; keep it original.</p>
-    </section>
-
-    <section id="make" class="mt-16">
-      <h2 class="text-2xl font-bold">Notes</h2>
-      <ul class="mt-2 text-slate-300 list-disc list-inside text-sm">
-        <li>Browser‑only prototype. For heavier models (style transfer), add an API later.</li>
-        <li>Export length defaults to 8 bars; changes with detected BPM.</li>
-      </ul>
-    </section>
+    <p class="text-[11px] text-slate-500 text-center">This prototype rearranges tiny slices of your loop into a new rhythm and texture. Avoid dragging copyrighted material you can’t legally use in a composition.</p>
   </main>
 
-  <script>
-    // ====== Config & State ======
-    const AC = new (window.AudioContext || window.webkitAudioContext)();
-    const MAX_ANALYZE_SECS = 6; // analyze only the first 6 seconds for responsiveness
+<script>
+const AC = new (window.AudioContext||window.webkitAudioContext)();
+const MAX_SECS = 8; // analyze/slice first 8s for stability
+let srcBuf = null;         // original AudioBuffer
+let bpm = 100;             // detected bpm fallback
+let schedule = null;       // Tone.Part
+let recorder = null;       // Tone.Recorder
+let downloadURL = null;    // rendered wav url
 
-    let referenceBuffer = null; // 6s slice used for analysis
-    let detected = { bpm: null, key: null, mode: 'minor' };
+// UI elems
+const dz = document.getElementById('dz');
+const file = document.getElementById('file');
+const statusEl = document.getElementById('status');
+const actions = document.getElementById('actions');
+const playBtn = document.getElementById('play');
+const dl = document.getElementById('dl');
 
-    function db(msg){ const el = document.getElementById('status'); if(el) el.textContent = msg; }
+function db(m){ statusEl.textContent = m; }
 
-    // ====== Helpers ======
-    function bufToMono(buf){
-      if (!buf) return null;
-      const ch = buf.numberOfChannels;
-      if (ch === 1) return buf.getChannelData(0);
-      const L = buf.getChannelData(0), R = buf.getChannelData(1);
-      const out = new Float32Array(buf.length);
-      for (let i=0;i<buf.length;i++) out[i] = 0.5*(L[i]+R[i]);
-      return out;
-    }
+// Helpers
+function toMono(buf){
+  if (buf.numberOfChannels===1) return buf;
+  const out = AC.createBuffer(1, buf.length, buf.sampleRate);
+  const L = buf.getChannelData(0), R = buf.getChannelData(1);
+  const ch = out.getChannelData(0);
+  for(let i=0;i<buf.length;i++) ch[i] = 0.5*(L[i]+R[i]);
+  return out;
+}
+function firstSeconds(buf, secs){
+  const n = Math.min(buf.length, Math.floor(secs*buf.sampleRate));
+  const out = AC.createBuffer(buf.numberOfChannels, n, buf.sampleRate);
+  for(let c=0;c<buf.numberOfChannels;c++) out.copyToChannel(buf.getChannelData(c).subarray(0,n), c);
+  return out;
+}
 
-    function sliceFirstSeconds(buffer, seconds){
-      const sr = buffer.sampleRate; const N = Math.min(buffer.length, Math.floor(seconds*sr));
-      const mono = bufToMono(buffer);
-      const out = AC.createBuffer(1, N, sr);
-      out.copyToChannel(mono.subarray(0,N), 0);
-      return out;
-    }
-
-    // ====== Lightweight analysis (yields to UI) ======
-    async function onsetEnvelope(buffer, frameSize=1024, hopSize=512){
-      const mono = bufToMono(buffer);
-      const frames = Math.floor((mono.length - frameSize)/hopSize);
-      const env = new Float32Array(frames);
-      let prev = 0;
-      for(let i=0;i<frames;i++){
-        const start = i*hopSize;
-        let sum = 0;
-        for(let n=0;n<frameSize;n++) { const x = mono[start+n]||0; sum += x*x; }
-        const rms = Math.sqrt(sum/frameSize);
-        env[i] = Math.max(0, rms - prev);
-        prev = rms;
-        if (i % 200 === 0) await new Promise(r=>setTimeout(r,0)); // yield to keep UI responsive
+// Simple spectral flux onset detection
+async function onsetFlux(buf, frame=1024, hop=512){
+  const mono = toMono(buf).getChannelData(0);
+  const frames = Math.max(0, Math.floor((mono.length-frame)/hop));
+  const flux = new Float32Array(frames);
+  let prevSpec = new Float32Array(frame/2);
+  const hann = new Float32Array(frame);
+  for(let i=0;i<frame;i++) hann[i]=0.5*(1-Math.cos(2*Math.PI*i/(frame-1)));
+  for(let f=0; f<frames; f++){
+    const start = f*hop; if(start+frame>=mono.length) break;
+    // naive DFT mag spectrum (sufficient at 22k)
+    const bins = frame/2; const mag = new Float32Array(bins);
+    for(let k=0;k<bins;k++){
+      let re=0,im=0; const angK=-2*Math.PI*k/frame;
+      for(let n=0;n<frame;n++){
+        const x=(mono[start+n]||0)*hann[n]; const ang=angK*n; re+=x*Math.cos(ang); im+=x*Math.sin(ang);
       }
-      // normalize
-      const max = Math.max(...env); if (max>0) for(let i=0;i<env.length;i++) env[i]/=max;
-      return { flux: env, hopSize, sampleRate: buffer.sampleRate };
+      mag[k]=Math.hypot(re,im);
     }
-
-    function estimateBPMFromFlux(env){
-      const { flux, hopSize, sampleRate } = env;
-      const minBPM=60, maxBPM=180; const scores=[];
-      for(let bpm=minBPM; bpm<=maxBPM; bpm++){
-        const lag = Math.round((60/bpm)*sampleRate/hopSize);
-        let s=0; for(let i=lag;i<flux.length;i++) s += flux[i]*flux[i-lag];
-        scores.push({bpm, score:s});
-      }
-      scores.sort((a,b)=>b.score-a.score);
-      return scores[0]?.bpm || 100;
+    let sum=0; for(let k=0;k<bins;k++){ const d=Math.max(0, mag[k]-prevSpec[k]); sum+=d; }
+    flux[f]=sum; prevSpec=mag;
+    if (f%60===0) await new Promise(r=>setTimeout(r,0));
+  }
+  // normalize and pick peaks
+  const max = Math.max(...flux)||1; for(let i=0;i<flux.length;i++) flux[i]/=max;
+  const peaks=[]; const thr=0.22; const minDist=6; // frames (~6*hop/sampleRate s)
+  for(let i=2;i<flux.length-2;i++){
+    if (flux[i]>thr && flux[i]>flux[i-1] && flux[i]>flux[i+1]){
+      if (peaks.length===0 || i-peaks[peaks.length-1]>minDist) peaks.push(i);
     }
+  }
+  return { flux, peaks, hop, sr: buf.sampleRate };
+}
 
-    async function estimateKey(buffer){
-      const mono = bufToMono(buffer); const sr = buffer.sampleRate;
-      const N = 2048, hop = 1024, frames = Math.floor((mono.length-N)/hop);
-      const hann = new Float32Array(N); for(let i=0;i<N;i++) hann[i]=0.5*(1-Math.cos(2*Math.PI*i/(N-1)));
-      const bins = N/2; const pc = new Float32Array(12);
-      for(let f=0; f<frames; f++){
-        const start=f*hop; if(start+N>=mono.length) break;
-        for(let k=0;k<bins;k++){
-          let re=0, im=0; const angK = -2*Math.PI*k/N;
-          for(let n=0;n<N;n++){
-            const x=(mono[start+n]||0)*hann[n]; const ang=angK*n; re += x*Math.cos(ang); im += x*Math.sin(ang);
-          }
-          const mag = Math.hypot(re,im); const freq = k*sr/N; if(freq<40||freq>3000) continue;
-          const midi = 69+12*Math.log2(freq/440); const cls=((Math.round(midi)%12)+12)%12; if(isFinite(cls)) pc[cls]+=mag;
-        }
-        if (f%8===0) await new Promise(r=>setTimeout(r,0));
-      }
-      const names=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-      let bestI=0, best=-Infinity; for(let i=0;i<12;i++){ if(pc[i]>best){ best=pc[i]; bestI=i; } }
-      const relMinor=(bestI+9)%12; const mode=(pc[(bestI+3)%12]+pc[(bestI+10)%12] > pc[(bestI+4)%12]+pc[(bestI+7)%12])?'minor':'major';
-      const tonic = mode==='minor'? names[relMinor] : names[bestI];
-      return { tonic, mode };
-    }
+// Feature for rough class by centroid (kick/snare/hat)
+function centroid(frame, sr){
+  let num=0, den=0; for(let i=0;i<frame.length;i++){ const mag=frame[i]; const f=i*sr/(frame.length*2); num += f*mag; den += mag; }
+  return den? num/den : 0;
+}
 
-    // ====== Tone.js generation ======
-    let synths=[]; let part=null; let recorder=null; let recordedURL=null;
+function classifyPeaks(buf, env){
+  const mono = toMono(buf).getChannelData(0); const sr=env.sr; const frame=1024; const half=512;
+  const classes = {kick:[], snare:[], hat:[], perc:[]};
+  for(const p of env.peaks){
+    const start = p*env.hop; const s = Math.max(0, start-half);
+    const slice = mono.subarray(s, Math.min(mono.length, s+frame));
+    // tiny spectrum for centroid
+    const bins = frame/2; let re,im; const mag=new Float32Array(bins);
+    for(let k=0;k<bins;k++){ re=0; im=0; const angK=-2*Math.PI*k/frame; for(let n=0;n<slice.length && n<frame;n++){ const x=slice[n]; const ang=angK*n; re+=x*Math.cos(ang); im+=x*Math.sin(ang);} mag[k]=Math.hypot(re,im); }
+    const c = centroid(mag, sr);
+    if (c<140) classes.kick.push(start/sr);
+    else if (c<800) classes.snare.push(start/sr);
+    else if (c<4000) classes.hat.push(start/sr);
+    else classes.perc.push(start/sr);
+  }
+  return classes;
+}
 
-    function stopAll(){ if(part){ part.dispose(); part=null; } for(const s of synths){ try{s.dispose();}catch(_){} } synths=[]; }
+async function detectBPM(buf){
+  try{ const b = await window.webAudioBeatDetector.getBpm(buf); return Math.round(b); }
+  catch(e){ console.warn('BPM fail', e); return 100; }
+}
 
-    function scaleFor(key){
-      const order=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]; const idx = order.indexOf(key.tonic);
-      const major=[0,2,4,5,7,9,11]; const minor=[0,2,3,5,7,8,10];
-      const steps = key.mode==='minor'? minor:major; return steps.map(s=> order[(idx+s)%12]);
-    }
-    const choose = arr => arr[Math.floor(Math.random()*arr.length)];
+// Build new pattern using grains from source at given offsets
+async function buildPattern(buf, offsets, bpm){
+  // FX chain for modern polish
+  const comp = new Tone.Compressor({threshold:-18, ratio:3}).toDestination();
+  const limiter = new Tone.Limiter(-0.8).toDestination();
+  comp.connect(limiter);
+  const reverb = new Tone.Reverb({decay:2.2, wet:0.15}).connect(comp);
+  const delay = new Tone.FeedbackDelay({delayTime:0.25, feedback:0.22, wet:0.12}).connect(comp);
+  const eq = new Tone.EQ3({low:0, mid:0, high:1}).connect(comp);
 
-    async function generateLoop(){
-      stopAll(); await Tone.start();
-      const bpm = detected.bpm || 100; Tone.Transport.bpm.value = bpm;
-      const key = detected.key || { tonic:'C', mode:'minor' }; const scale = scaleFor(key);
+  // One GrainPlayer that reuses the same buffer at different offsets
+  const gKick = new Tone.GrainPlayer({ url: buf, grainSize:0.08, overlap:0.02, playbackRate:1, loop:false }).connect(eq);
+  const gSnare= new Tone.GrainPlayer({ url: buf, grainSize:0.09, overlap:0.03, playbackRate:1, loop:false }).connect(reverb);
+  const gHat  = new Tone.GrainPlayer({ url: buf, grainSize:0.04, overlap:0.02, playbackRate:1.2, loop:false }).connect(eq);
+  const gPerc = new Tone.GrainPlayer({ url: buf, grainSize:0.06, overlap:0.02, playbackRate:1, loop:false }).connect(delay);
+  [gKick,gSnare,gHat,gPerc].forEach(g=> g.sync().start(0));
 
-      const kick = new Tone.MembraneSynth({ pitchDecay:0.01, octaves:6, oscillator:{type:'sine'}, envelope:{attack:0.001, decay:0.4, sustain:0.01, release:0.2}}).toDestination();
-      const snare = new Tone.NoiseSynth({ noise:{type:'white'}, envelope:{attack:0.001, decay:0.2, sustain:0} }).toDestination();
-      const hat = new Tone.MetalSynth({ frequency:200, envelope:{attack:0.001, decay:0.1, release:0.05}, harmonicity:5.1, modulationIndex:32, resonance:4000, octaves:1.5 }).toDestination();
-      const bass = new Tone.MonoSynth({ oscillator:{type:'sawtooth'}, filter:{ Q:2 }, envelope:{attack:0.005, decay:0.2, sustain:0.2, release:0.4}, filterEnvelope:{ attack:0.005, decay:0.2, sustain:0.1, release:0.2, baseFrequency:80, octaves:2.5 } }).toDestination();
-      const pad = new Tone.PolySynth(Tone.Synth, { oscillator:{type:'sine'}, envelope:{attack:0.02, decay:0.2, sustain:0.6, release:0.6}}).toDestination();
-      synths.push(kick,snare,hat,bass,pad);
+  Tone.Transport.bpm.value = bpm;
+  const bars = 8; const ev=[];
+  const rnd = (a)=> a[Math.floor(Math.random()*a.length)] ?? 0;
+  // reduce offset arrays for stability
+  const K = offsets.kick.slice(0,16), S = offsets.snare.slice(0,16), H = offsets.hat.slice(0,64), P = offsets.perc.slice(0,32);
+  for(let b=0;b<bars;b++){
+    ev.push([`${b}:0:0`, {t:'k',o:rnd(K)}]);
+    ev.push([`${b}:1:0`, {t:'s',o:rnd(S)}]);
+    ev.push([`${b}:3:0`, {t:'s',o:rnd(S)}]);
+    for(let s=0;s<16;s++){ if (Math.random()<0.35) ev.push([`${b}:${Math.floor(s/4)}:${s%4}`, {t:'h',o:rnd(H)}]); }
+    if (Math.random()<0.5) ev.push([`${b}:2:0`, {t:'k',o:rnd(K)}]);
+    if (Math.random()<0.35) ev.push([`${b}:2:2`, {t:'p',o:rnd(P)}]);
+  }
+  if (schedule) schedule.dispose();
+  schedule = new Tone.Part((time, d)=>{
+    const offs = d.o||0; // seconds in source
+    if (d.t==='k') gKick.start(time, offs);
+    if (d.t==='s') gSnare.start(time, offs);
+    if (d.t==='h') gHat.start(time, offs);
+    if (d.t==='p') gPerc.start(time, offs);
+  }, ev).start(0);
 
-      const bars = 8; const pat=[];
-      for(let b=0;b<bars;b++){
-        pat.push({ time: `${b}:0:0`, instr:'kick' }); if (Math.random()<0.6) pat.push({ time: `${b}:2:0`, instr:'kick' });
-        pat.push({ time: `${b}:1:0`, instr:'snare' }); pat.push({ time: `${b}:3:0`, instr:'snare' });
-        for(let s=0;s<16;s++){ if (Math.random()<0.25) pat.push({ time: `${b}:${Math.floor(s/4)}:${s%4}`, instr:'hat' }); }
-      }
-      const roots=[scale[0], scale[3%scale.length], scale[4%scale.length]];
-      for(let b=0;b<bars;b++){
-        const r = choose(roots); pat.push({ time:`${b}:0:0`, instr:'bass', note: r+"2", dur:"2n"}); pat.push({ time:`${b}:2:0`, instr:'bass', note: r+"2", dur:"2n"});
-      }
-      function triad(root){ const i = Math.max(0, scale.indexOf(root)); return [scale[i]+"4", scale[(i+2)%scale.length]+"4", scale[(i+4)%scale.length]+"4"]; }
-      const chordRoots=[scale[0], scale[3%scale.length], scale[4%scale.length], scale[5%scale.length]];
-      for(let b=0;b<bars;b+=2){ const cr = choose(chordRoots); pat.push({ time:`${b}:0:0`, instr:'pad', chord: triad(cr), dur:"2m"}); }
+  // record
+  if (!recorder) recorder = new Tone.Recorder();
+  Tone.getDestination().connect(recorder);
+  Tone.Transport.start();
+  const seconds = (bars*4) * (60/bpm);
+  recorder.start();
+  setTimeout(async ()=>{
+    const blob = await recorder.stop();
+    if (downloadURL) URL.revokeObjectURL(downloadURL);
+    downloadURL = URL.createObjectURL(blob);
+    document.getElementById('dl').href = downloadURL;
+    actions.classList.remove('hidden');
+    db('Done. Play or Download your new loop.');
+  }, (seconds+0.25)*1000);
+}
 
-      part = new Tone.Part((time, ev)=>{
-        if(ev.instr==='kick') kick.triggerAttackRelease("A1","8n",time);
-        if(ev.instr==='snare') snare.triggerAttackRelease("8n",time);
-        if(ev.instr==='hat') hat.triggerAttackRelease("16n",time);
-        if(ev.instr==='bass') bass.triggerAttackRelease(ev.note, ev.dur||"8n", time);
-        if(ev.instr==='pad') pad.triggerAttackRelease(ev.chord, ev.dur||"1m", time);
-      }, pat).start(0);
+async function processFile(f){
+  db('Decoding…');
+  const ab = await f.arrayBuffer();
+  const buf = await AC.decodeAudioData(ab);
+  srcBuf = firstSeconds(buf, MAX_SECS);
+  db('Analyzing…');
+  const b = await detectBPM(srcBuf); bpm = b || 100;
+  const env = await onsetFlux(srcBuf, 1024, 512);
+  const offsets = classifyPeaks(srcBuf, env);
+  db(`BPM ${bpm} — generating…`);
+  await Tone.start();
+  // pass original buffer into Tone.ToneAudioBuffer for GrainPlayer
+  const tBuf = new Tone.ToneAudioBuffer(srcBuf);
+  await buildPattern(tBuf, offsets, bpm);
+}
 
-      if (!recorder) recorder = new Tone.Recorder();
-      Tone.Destination.connect(recorder);
-      Tone.Transport.start();
-      const seconds = (bars*4) * (60/bpm);
-      recorder.start();
-      setTimeout(async ()=>{ const blob = await recorder.stop(); recordedURL = URL.createObjectURL(blob); document.getElementById('downloadBtn').disabled = false; db('Loop generated. You can play or download.'); }, (seconds+0.25)*1000);
-    }
+// UI wiring: minimal — just title + drop zone; autoplay on drop
+function handleDropFiles(files){
+  const f = files?.[0];
+  if(!f){ db('No audio file detected.'); return; }
+  if(!f.type.startsWith('audio') && !/\.(wav|aif|aiff|mp3|flac|m4a)$/i.test(f.name||'')){
+    db('Not an audio file. Use .wav/.aif/.mp3'); return; }
+  processFile(f).catch(e=>{ console.error(e); db('Error while processing. Try a shorter loop.'); });
+}
 
-    // ====== File I/O & UI wiring ======
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('fileInput');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const generateBtn = document.getElementById('generateBtn');
-    const playBtn = document.getElementById('playBtn');
-    const bpmEl = document.getElementById('bpm');
-    const keyEl = document.getElementById('key');
-    const downloadBtn = document.getElementById('downloadBtn');
+// Dropzone
+dz.addEventListener('click', ()=> file.click());
+file.addEventListener('change', e=> handleDropFiles(e.target.files));
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); const dt=e.dataTransfer; if(dt?.files&&dt.files.length) handleDropFiles(dt.files); else db('Drag the actual audio file (export from Splice first).'); });
 
-    function handleFiles(files){
-      const f = files?.[0];
-      if(!f){ db('No audio file detected. If dragging from Splice, export/download first, then drag the .wav from your disk.'); return; }
-      if(!f.type.startsWith('audio') && !/\.(wav|aif|aiff|mp3|flac|m4a)$/i.test(f.name||'')){
-        db('This item is not an audio file. Please drag a .wav/.aif/.mp3 from your disk.'); return; }
-      db('Decoding…');
-      f.arrayBuffer().then(buf=> AC.decodeAudioData(buf)).then(decoded=>{
-        referenceBuffer = sliceFirstSeconds(decoded, MAX_ANALYZE_SECS);
-        db('Ready. Click Analyze. (Analyzing first 6s)');
-        analyzeBtn.disabled = false; generateBtn.disabled = true; playBtn.disabled = true;
-      }).catch(e=>{ console.error(e); db('Failed to decode audio. Try a different file or format.'); });
-    }
-
-    dropzone.addEventListener('click', ()=> fileInput.click());
-    fileInput.addEventListener('change', e=> handleFiles(e.target.files));
-    dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
-    dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
-    dropzone.addEventListener('drop', e=>{
-      e.preventDefault(); dropzone.classList.remove('drag');
-      const dt = e.dataTransfer;
-      if (dt?.items && dt.items.length){
-        const fileItems = Array.from(dt.items).filter(it=> it.kind==='file');
-        if (fileItems.length){ const file = fileItems[0].getAsFile(); if (file) { handleFiles([file]); return; } }
-        const uri = dt.getData('text/uri-list') || dt.getData('text/plain');
-        if (uri){ db('Detected a link, not a file. Please download/export the loop, then drag the .wav from your disk.'); return; }
-      }
-      if (dt?.files && dt.files.length) { handleFiles(dt.files); return; }
-      db('No audio file detected. If dragging from Splice, export/download first.');
-    });
-
-    analyzeBtn.addEventListener('click', async ()=>{
-      if(!referenceBuffer) return; db('Analyzing (first 6s)…');
-      try{
-        const env = await onsetEnvelope(referenceBuffer, 1024, 512);
-        const bpm = Math.round(estimateBPMFromFlux(env));
-        detected.bpm = bpm; bpmEl.textContent = bpm;
-        db('Detecting key…');
-        const k = await estimateKey(referenceBuffer);
-        detected.key = k; keyEl.textContent = `${k.tonic} ${k.mode}`;
-        db('Analysis done. Generate when ready.');
-        generateBtn.disabled = false; playBtn.disabled = false;
-      }catch(e){ console.error(e); db('Analysis failed. Using defaults.');
-        detected = { bpm: 100, key:{tonic:'C', mode:'minor'} };
-        bpmEl.textContent = '100'; keyEl.textContent = 'C minor';
-        generateBtn.disabled = false; playBtn.disabled = false;
-      }
-    });
-
-    let playing=false;
-    playBtn.addEventListener('click', async ()=>{
-      await Tone.start();
-      if(!playing){ Tone.Transport.start(); playBtn.textContent = 'Pause'; playing=true; }
-      else { Tone.Transport.pause(); playBtn.textContent = 'Play'; playing=false; }
-    });
-
-    downloadBtn.addEventListener('click', ()=>{
-      if(!recordedURL) return; const a = document.createElement('a'); a.href = recordedURL; a.download = 'ygp-inspired-loop.wav'; a.click();
-    });
-
-    generateBtn.addEventListener('click', ()=>{ db('Generating… (rendering & recording)'); generateLoop(); });
-
-    // ====== Optional quick self-test ======
-    // Open the page with #test to run. Creates a synthetic 120 BPM click track and checks BPM estimate.
-    async function runSelfTest(){
-      const sr = 22050; const secs = 4; const len = sr*secs; const buf = AC.createBuffer(1, len, sr); const ch = buf.getChannelData(0);
-      // simple 120 BPM clicks (every 0.5s → 2Hz)
-      for(let t=0; t<len; t+=Math.floor(sr*0.5)) ch[t] = 1.0;
-      const sliced = sliceFirstSeconds(buf, MAX_ANALYZE_SECS);
-      const env = await onsetEnvelope(sliced, 1024, 512);
-      const bpm = estimateBPMFromFlux(env);
-      console.log('[SELF-TEST] Expected BPM ≈ 120, got', bpm);
-    }
-    if (location.hash === '#test') { runSelfTest(); }
-  </script>
+// Minimal controls
+let playing=false;
+playBtn.addEventListener('click', async ()=>{
+  await Tone.start();
+  if (!playing){ Tone.Transport.start(); playBtn.textContent='Pause'; playing=true; }
+  else { Tone.Transport.pause(); playBtn.textContent='Play'; playing=false; }
+});
+</script>
 </body>
 </html>
