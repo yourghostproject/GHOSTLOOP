@@ -1,289 +1,920 @@
-<!DOCTYPE html>
+'<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>GHOSTLOOP — The Ghost Project</title>
-  <meta name="description" content="Drag a melodic loop. We analyze a short slice, then granularly recompose FIVE new loops from your own audio — locally, no uploads."/>
-  <link rel="icon" href="data:,"/>
-  <!-- Minimal YGP neon aesthetic via Tailwind CDN for speed -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Audio libs (all local/browser; no paid APIs) -->
-  <script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
-  <script src="https://unpkg.com/meyda/dist/web/meyda.min.js"></script>
-  <script src="https://unpkg.com/web-audio-beat-detector/dist/index.umd.js"></script>
-  <style>
-    :root{ --bg:#070a0f; --ink:#e6f0ff; --accent:#00e5ff; --accent2:#a855f7; }
-    html,body{height:100%;background:
-      radial-gradient(1200px 800px at 80% -10%, rgba(168,85,247,.12), transparent),
-      radial-gradient(1000px 700px at -10% 110%, rgba(0,229,255,.10), transparent),
-      var(--bg);color:var(--ink)}
-    .title{font-weight:900;letter-spacing:.4px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
-    .drop{border:2px dashed rgba(255,255,255,.22);border-radius:16px;padding:28px;text-align:center;cursor:pointer;transition:.2s}
-    .drop.drag{border-color:var(--accent);background:rgba(0,229,255,.06)}
-    .glass{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(8px)}
-    .link{color:var(--accent)}
-    .row{display:flex;align-items:center;gap:.75rem;justify-content:space-between}
-    .btn{border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:.65rem .9rem;min-height:44px}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonic Meditation Studio | Bespoke Soundscapes for Wellness Professionals</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-dark: #0a0e1a;
+            --secondary-dark: #1a1f2e;
+            --accent-blue: #4a90e2;
+            --accent-purple: #8b7fc7;
+            --accent-teal: #5dbaa8;
+            --text-primary: #ffffff;
+            --text-secondary: #b8c2d6;
+            --gradient-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-2: linear-gradient(135deg, #5dbaa8 0%, #4a90e2 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--primary-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 20s infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
+        }
+
+        /* Header */
+        header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.5rem 5%;
+            background: rgba(10, 14, 26, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 300;
+            letter-spacing: 3px;
+            background: var(--gradient-2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-button {
+            padding: 0.8rem 2rem;
+            background: var(--gradient-2);
+            border: none;
+            border-radius: 30px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(93, 186, 168, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8rem 5% 4rem;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            max-width: 1400px;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 200;
+            letter-spacing: 2px;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+        }
+
+        .hero h1 .highlight {
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 300;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+            font-weight: 300;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .primary-cta {
+            padding: 1.2rem 3rem;
+            font-size: 1.1rem;
+            background: var(--gradient-2);
+            border: none;
+            border-radius: 40px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .primary-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(93, 186, 168, 0.4);
+        }
+
+        .secondary-cta {
+            padding: 1.2rem 3rem;
+            font-size: 1.1rem;
+            background: transparent;
+            border: 2px solid var(--accent-teal);
+            border-radius: 40px;
+            color: var(--accent-teal);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .secondary-cta:hover {
+            background: rgba(93, 186, 168, 0.1);
+            transform: translateY(-3px);
+        }
+
+        /* Trust Badges */
+        .trust-badges {
+            margin-top: 4rem;
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            flex-wrap: wrap;
+            opacity: 0.7;
+        }
+
+        .badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-number {
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: var(--accent-teal);
+        }
+
+        .badge-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Section Styling */
+        section {
+            position: relative;
+            padding: 6rem 5%;
+            z-index: 1;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+            letter-spacing: 1px;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 4rem;
+            font-size: 1.1rem;
+        }
+
+        /* Services Grid */
+        .services-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .service-card {
+            background: var(--secondary-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--gradient-2);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent-teal);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .service-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .service-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .service-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 400;
+        }
+
+        .service-card p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Process Section */
+        .process {
+            background: linear-gradient(180deg, var(--primary-dark) 0%, var(--secondary-dark) 100%);
+        }
+
+        .process-timeline {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .process-step {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 3rem;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            min-width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--gradient-1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 400;
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* Portfolio Section */
+        .portfolio {
+            background: var(--primary-dark);
+        }
+
+        .audio-samples {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .audio-card {
+            background: var(--secondary-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .audio-card:hover {
+            border-color: var(--accent-purple);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .audio-card h4 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 400;
+        }
+
+        .audio-specs {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .waveform {
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(90deg, 
+                rgba(93, 186, 168, 0.2) 0%, 
+                rgba(93, 186, 168, 0.4) 50%, 
+                rgba(93, 186, 168, 0.2) 100%);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-teal);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .waveform:hover {
+            background: linear-gradient(90deg, 
+                rgba(93, 186, 168, 0.3) 0%, 
+                rgba(93, 186, 168, 0.5) 50%, 
+                rgba(93, 186, 168, 0.3) 100%);
+        }
+
+        /* Pricing Section */
+        .pricing {
+            background: linear-gradient(180deg, var(--secondary-dark) 0%, var(--primary-dark) 100%);
+        }
+
+        .pricing-cards {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .pricing-card {
+            background: var(--secondary-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .pricing-card.featured {
+            border: 2px solid var(--accent-teal);
+            transform: scale(1.05);
+        }
+
+        .pricing-card.featured::before {
+            content: 'MOST POPULAR';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gradient-2);
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .pricing-card.featured:hover {
+            transform: translateY(-5px) scale(1.07);
+        }
+
+        .pricing-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 400;
+        }
+
+        .price {
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--accent-teal);
+            margin-bottom: 1rem;
+        }
+
+        .price-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .features-list {
+            text-align: left;
+            margin-bottom: 2rem;
+        }
+
+        .features-list li {
+            padding: 0.8rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            list-style: none;
+        }
+
+        .features-list li::before {
+            content: '✓ ';
+            color: var(--accent-teal);
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        /* Guarantee Section */
+        .guarantee {
+            background: var(--secondary-dark);
+            text-align: center;
+            padding: 4rem 5%;
+        }
+
+        .guarantee-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .guarantee-badge {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: var(--gradient-2);
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+
+        /* CTA Section */
+        .final-cta {
+            padding: 6rem 5%;
+            text-align: center;
+            background: var(--primary-dark);
+        }
+
+        .final-cta h2 {
+            font-size: 3rem;
+            font-weight: 300;
+            margin-bottom: 1.5rem;
+        }
+
+        .final-cta p {
+            font-size: 1.3rem;
+            color: var(--text-secondary);
+            margin-bottom: 3rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--secondary-dark);
+            padding: 3rem 5%;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            color: var(--text-secondary);
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .social-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .social-links a:hover {
+            color: var(--accent-teal);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+
+            .pricing-card.featured {
+                transform: scale(1);
+            }
+
+            .services-grid,
+            .audio-samples,
+            .pricing-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .process-step {
+                flex-direction: column;
+            }
+
+            nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
 </head>
 <body>
-  <main class="max-w-2xl mx-auto p-5 min-h-screen flex flex-col gap-6">
-    <h1 class="title text-4xl text-center mt-8">GHOSTLOOP</h1>
-    <section id="panel" class="glass rounded-2xl p-4">
-      <div id="dz" class="drop">
-        <p class="text-center">Drag & drop a <b>.wav/.aif/.mp3</b><br/><span class="text-xs text-slate-400">No uploads. All processing is local.</span></p>
-        <input id="file" class="hidden" type="file" accept=".wav,.aif,.aiff,.mp3,.flac,.m4a,audio/*"/>
-      </div>
-      <p id="status" class="text-xs text-slate-400 mt-3">Waiting for file…</p>
-      <!-- Variants container appears after render -->
-      <div id="variants" class="mt-3 hidden"></div>
+    <!-- Animated Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Header -->
+    <header>
+        <nav>
+            <div class="logo">SONIC MEDITATION</div>
+            <a href="#contact" class="cta-button">Get Your Free Preview</a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>
+                Bespoke <span class="highlight">Soundscapes</span><br>
+                For Wellness Professionals
+            </h1>
+            <p class="hero-subtitle">
+                Neuroscience-backed binaural compositions, ethereal piano scores, and immersive meditation tracks.
+                Professionally composed, mixed, and mastered for your clients' transformative experiences.
+            </p>
+            <div class="hero-cta">
+                <button class="primary-cta" onclick="scrollToSection('contact')">Request Free Preview →</button>
+                <button class="secondary-cta" onclick="scrollToSection('portfolio')">Listen to Samples</button>
+            </div>
+            <div class="trust-badges">
+                <div class="badge">
+                    <div class="badge-number">&lt;24h</div>
+                    <div class="badge-text">Preview Delivery</div>
+                </div>
+                <div class="badge">
+                    <div class="badge-number">20+</div>
+                    <div class="badge-text">Years Experience</div>
+                </div>
+                <div class="badge">
+                    <div class="badge-number">432Hz</div>
+                    <div class="badge-text">Healing Frequency</div>
+                </div>
+            </div>
+        </div>
     </section>
-    <p class="text-[11px] text-slate-500 text-center">This prototype rearranges very short grains from your loop to craft new music. Avoid dragging copyrighted material you can’t legally use in a composition.</p>
-  </main>
 
-<script>
-// ====== Audio context & constants (free, local-only) ======
-const AC = new (window.AudioContext||window.webkitAudioContext)();
-const MAX_SECS = 8;           // analyze/slice first 8s only
-const NUM_VARIANTS = 5;       // render 5 options
-const MAX_RETRIES = 2;        // anti-recognition retries per variant
+    <!-- Services Section -->
+    <section class="services" id="services">
+        <h2 class="section-title">Specialized Composition Services</h2>
+        <p class="section-subtitle">
+            Every track is meticulously crafted to induce specific brainwave states and enhance your clients' wellbeing journey.
+        </p>
+        <div class="services-grid">
+            <div class="service-card">
+                <div class="service-icon">🎵</div>
+                <h3>Binaural Beats Production</h3>
+                <p>Precision-engineered frequency patterns (Delta, Theta, Alpha, Beta, Gamma) designed to entrain brainwaves for deep meditation, focus, or sleep. Each track scientifically calibrated for optimal neurological response.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">🎹</div>
+                <h3>Ethereal Piano Compositions</h3>
+                <p>Original, emotionally resonant piano pieces layered with ambient textures. Designed to create peaceful sonic environments that support contemplation, relaxation, and mindful presence.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">🌊</div>
+                <h3>Nature-Infused Soundscapes</h3>
+                <p>Immersive environmental audio blending organic nature recordings with harmonic overtones. Perfect for guided meditations, spa environments, and therapeutic sessions.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">🧘</div>
+                <h3>Guided Meditation Backing</h3>
+                <p>Subtle, non-intrusive background scores specifically engineered to support spoken word guidance. Maintains emotional continuity without distracting from your message.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">😴</div>
+                <h3>Sleep Optimization Tracks</h3>
+                <p>Extended-duration compositions (30-60 min) featuring gradual tempo decreases and frequency shifts to naturally guide listeners into restorative sleep states.</p>
+            </div>
+            <div class="service-card">
+                <div class="service-icon">⚡</div>
+                <h3>Full Production Suite</h3>
+                <p>Complete composition, arrangement, mixing, and mastering services. Delivery in multiple formats (WAV, MP3, stems) with commercial licensing included.</p>
+            </div>
+        </div>
+    </section>
 
-// State
-let srcBuf = null;            // original AudioBuffer (first 8s)
-let srcFeat = null;           // {chroma:[12], mfcc:[n]}
-let bpm = 100;                // detected bpm fallback
-let activePlayers = new Map();// optionIndex -> {playing, stop()}
+    <!-- Process Section -->
+    <section class="process" id="process">
+        <h2 class="section-title">Your Journey from Concept to Completion</h2>
+        <p class="section-subtitle">
+            A streamlined, collaborative process designed for busy wellness professionals.
+        </p>
+        <div class="process-timeline">
+            <div class="process-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Brief & Consultation</h3>
+                    <p>Share your vision: target emotional state, duration, intended use, and any reference tracks. I'll ask clarifying questions to ensure perfect alignment with your brand and client needs.</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Preview Delivery (24h)</h3>
+                    <p>Within one business day, receive a 60-90 second preview demonstrating the sonic direction, frequencies, and emotional atmosphere. No commitment required until you approve.</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Refinement & Approval</h3>
+                    <p>One round of revisions included to fine-tune tempo, intensity, instrumentation, or frequencies. Your satisfaction is paramount before final production begins.</p>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Final Delivery</h3>
+                    <p>Receive your professionally mastered track in high-quality formats (44.1kHz/24-bit WAV + 320kbps MP3) with full commercial licensing. Optional stems available for maximum flexibility.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-// UI
-const dz = document.getElementById('dz');
-const file = document.getElementById('file');
-const statusEl = document.getElementById('status');
-const variantsEl = document.getElementById('variants');
-const db = (m)=> statusEl.textContent = m;
+    <!-- Portfolio Section -->
+    <section class="portfolio" id="portfolio">
+        <h2 class="section-title">Sample Soundscapes</h2>
+        <p class="section-subtitle">
+            Experience the quality and emotional depth of my compositions.
+        </p>
+        <div class="audio-samples">
+            <div class="audio-card">
+                <h4>Deep Delta Sleep Journey</h4>
+                <p class="audio-specs">0.5-4 Hz • 45 min • 432 Hz tuning</p>
+                <div class="waveform">▶ Click to Preview</div>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Gradual descent from 4 Hz to 0.5 Hz with warm piano and sub-bass frequencies. Designed for profound restorative sleep.
+                </p>
+            </div>
+            <div class="audio-card">
+                <h4>Theta Meditation Portal</h4>
+                <p class="audio-specs">4-8 Hz • 20 min • Solfeggio frequencies</p>
+                <div class="waveform">▶ Click to Preview</div>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Ethereal pads and crystal bowls layered with 6 Hz binaural beats. Facilitates deep meditative states and creative insight.
+                </p>
+            </div>
+            <div class="audio-card">
+                <h4>Forest Bathing Ambience</h4>
+                <p class="audio-specs">Nature • 30 min • Schumann resonance</p>
+                <div class="waveform">▶ Click to Preview</div>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    Authentic woodland recordings blended with 7.83 Hz Earth frequency and subtle harmonic drones for grounding and presence.
+                </p>
+            </div>
+        </div>
+    </section>
 
-// ====== Helpers ======
-function toMono(buf){
-  if (buf.numberOfChannels===1) return buf;
-  const out = AC.createBuffer(1, buf.length, buf.sampleRate);
-  const L = buf.getChannelData(0), R = buf.getChannelData(1);
-  const ch = out.getChannelData(0);
-  for(let i=0;i<buf.length;i++) ch[i] = 0.5*(L[i]+R[i]);
-  return out;
-}
-function firstSeconds(buf, secs){
-  const n = Math.min(buf.length, Math.floor(secs*buf.sampleRate));
-  const out = AC.createBuffer(1, n, buf.sampleRate);
-  out.copyToChannel(toMono(buf).getChannelData(0).subarray(0,n), 0);
-  return out;
-}
-async function resampleTo(buf, targetSR=22050){
-  const off = new OfflineAudioContext(1, Math.ceil(buf.duration*targetSR), targetSR);
-  const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
-  return await off.startRendering();
-}
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <h2 class="section-title">Transparent Pricing</h2>
+        <p class="section-subtitle">
+            Professional-grade compositions with full commercial rights included.
+        </p>
+        <div class="pricing-cards">
+            <div class="pricing-card">
+                <h3>Single Track</h3>
+                <div class="price">£350</div>
+                <p class="price-subtitle">Per composition</p>
+                <ul class="features-list">
+                    <li>Up to 30 minutes duration</li>
+                    <li>One concept & one revision</li>
+                    <li>Full composition & mastering</li>
+                    <li>WAV + MP3 delivery</li>
+                    <li>Commercial license included</li>
+                    <li>3-5 day turnaround</li>
+                </ul>
+                <button class="cta-button" onclick="scrollToSection('contact')">Get Started</button>
+            </div>
+            <div class="pricing-card featured">
+                <h3>Professional Package</h3>
+                <div class="price">£900</div>
+                <p class="price-subtitle">3 tracks / Save £150</p>
+                <ul class="features-list">
+                    <li>Three 30-min compositions</li>
+                    <li>Priority 24h preview</li>
+                    <li>Two revision rounds per track</li>
+                    <li>Stems available on request</li>
+                    <li>Extended commercial license</li>
+                    <li>7-10 day turnaround</li>
+                </ul>
+                <button class="cta-button" onclick="scrollToSection('contact')">Most Popular</button>
+            </div>
+            <div class="pricing-card">
+                <h3>Premium Album</h3>
+                <div class="price">£2400</div>
+                <p class="price-subtitle">8 tracks / Save £400</p>
+                <ul class="features-list">
+                    <li>Eight 30-min compositions</li>
+                    <li>Cohesive album concept</li>
+                    <li>Unlimited revisions</li>
+                    <li>Full stems included</li>
+                    <li>Exclusive commercial license</li>
+                    <li>14-21 day turnaround</li>
+                </ul>
+                <button class="cta-button" onclick="scrollToSection('contact')">Go Premium</button>
+            </div>
+        </div>
+    </section>
 
-// Meyda features (chroma + mfcc) averaged across frames
-function avg(arrays){ const n = arrays.length||1; const out = new Array(arrays[0].length).fill(0); for(const a of arrays){ for(let i=0;i<a.length;i++) out[i]+=a[i]; } return out.map(v=> v/n); }
-function norm(v){ const s = Math.hypot(...v) || 1; return v.map(x=> x/s); }
-function cosine(a,b){ const na=norm(a), nb=norm(b); let s=0; for(let i=0;i<na.length;i++) s += (na[i]||0)*(nb[i]||0); return s; }
-async function featuresFromBuffer(buf){
-  const sr = buf.sampleRate; const sig = buf.getChannelData(0);
-  const frameSize = 2048, hop = 1024; const frames = Math.max(0, Math.floor((sig.length-frameSize)/hop));
-  const chromas=[], mfccs=[];
-  for(let i=0;i<frames;i++){
-    const frame = sig.subarray(i*hop, i*hop + frameSize);
-    const ch = Meyda.extract('chroma', frame, { sampleRate: sr, bufferSize: frameSize, hopSize: hop });
-    const mf = Meyda.extract('mfcc', frame, { sampleRate: sr, bufferSize: frameSize, hopSize: hop, numberOfMFCCCoefficients: 13 });
-    if (ch) chromas.push(ch); if (mf) mfccs.push(mf);
-    if (i%10===0) await new Promise(r=>setTimeout(r,0));
-  }
-  return { chroma: chromas.length? avg(chromas) : new Array(12).fill(0), mfcc: mfccs.length? avg(mfccs) : new Array(13).fill(0) };
-}
+    <!-- Guarantee Section -->
+    <section class="guarantee">
+        <div class="guarantee-content">
+            <div class="guarantee-badge">🛡️ 100% Satisfaction Guarantee</div>
+            <h3 style="font-size: 2rem; font-weight: 300; margin-bottom: 1rem;">Risk-Free Collaboration</h3>
+            <p style="color: var(--text-secondary); line-height: 1.8;">
+                If you're not completely satisfied with your preview within 24 hours, you walk away with no obligation. 
+                Once approved, I guarantee professional-grade delivery or your money back. Your success is my reputation.
+            </p>
+        </div>
+    </section>
 
-// Anti-recognition guard: low chroma cosine + low MFCC cosine (i.e., less similar)
-function isTooSimilar(renderFeat, srcFeat){
-  const chromaSim = cosine(renderFeat.chroma, srcFeat.chroma);   // 0..1
-  const mfccSim   = cosine(renderFeat.mfcc, srcFeat.mfcc);       // 0..1
-  // thresholds tuned to be safe but musical; lower is more different
-  return (chromaSim >= 0.55) || (mfccSim >= 0.80);
-}
+    <!-- Final CTA Section -->
+    <section class="final-cta" id="contact">
+        <h2>Ready to Elevate Your Client Experience?</h2>
+        <p>Let's create soundscapes that transform lives.</p>
+        <div style="max-width: 600px; margin: 0 auto;">
+            <form style="display: flex; flex-direction: column; gap: 1rem;">
+                <input type="text" placeholder="Your Name" style="padding: 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: var(--secondary-dark); color: white; font-size: 1rem;">
+                <input type="email" placeholder="Email Address" style="padding: 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: var(--secondary-dark); color: white; font-size: 1rem;">
+                <input type="text" placeholder="Company / Project Name" style="padding: 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: var(--secondary-dark); color: white; font-size: 1rem;">
+                <textarea placeholder="Tell me about your project and vision..." rows="5" style="padding: 1rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: var(--secondary-dark); color: white; font-size: 1rem; resize: vertical;"></textarea>
+                <button type="submit" class="primary-cta" style="width: 100%;">Request Free 24h Preview →</button>
+            </form>
+            <p style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-secondary);">
+                Or email directly: <a href="mailto:hello@sonicmeditation.studio" style="color: var(--accent-teal); text-decoration: none;">hello@sonicmeditation.studio</a>
+            </p>
+        </div>
+    </section>
 
-// Simple BPM using external lib
-async function detectBPM(buf){
-  try{ const b = await window.webAudioBeatDetector.getBpm(buf); return Math.round(b); }
-  catch(e){ console.warn('BPM fail', e); return 100; }
-}
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="logo" style="margin-bottom: 1rem;">SONIC MEDITATION</div>
+            <p style="margin-bottom: 2rem;">Transformative soundscapes for wellness professionals</p>
+            <div class="social-links">
+                <a href="#">Instagram</a>
+                <a href="#">LinkedIn</a>
+                <a href="#">SoundCloud</a>
+                <a href="#">Spotify</a>
+            </div>
+            <p style="font-size: 0.9rem; margin-top: 2rem;">
+                © 2025 Sonic Meditation Studio. All rights reserved. | Based in London, UK
+            </p>
+        </div>
+    </footer>
 
-// ====== Variant renderer (granular from source) ======
-async function renderVariant(optionIndex, seed=0){
-  await Tone.start();
-  Tone.Transport.stop(); Tone.Transport.cancel(0);
-  Tone.Transport.bpm.value = bpm;
+    <script>
+        // Generate animated particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 50;
 
-  // FX chain for modern finish
-  const comp = new Tone.Compressor({threshold:-18, ratio:3}).toDestination();
-  const limiter = new Tone.Limiter(-0.9).toDestination();
-  comp.connect(limiter);
-  const reverb = new Tone.Reverb({decay:2.0, wet:0.12}).connect(comp);
-  const delay  = new Tone.FeedbackDelay({delayTime:0.25, feedback:0.22, wet:0.10}).connect(comp);
-  const eq     = new Tone.EQ3({low:0, mid:0, high:1}).connect(comp);
-  const widen  = new Tone.StereoWidener({ width: 0.3 }).connect(comp);
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
 
-  // One buffer reused via GrainPlayers (keeps "same material")
-  const tBuf = new Tone.ToneAudioBuffer(srcBuf);
-  const gA = new Tone.GrainPlayer({ url: tBuf, grainSize: 0.06, overlap: 0.02, loop:false }).connect(eq);
-  const gB = new Tone.GrainPlayer({ url: tBuf, grainSize: 0.09, overlap: 0.03, loop:false }).connect(reverb);
-  const gC = new Tone.GrainPlayer({ url: tBuf, grainSize: 0.04, overlap: 0.02, loop:false }).connect(delay);
-  const gD = new Tone.GrainPlayer({ url: tBuf, grainSize: 0.08, overlap: 0.02, loop:false, playbackRate: 0.98 }).connect(widen);
-  [gA,gB,gC,gD].forEach(g=> g.sync().start(0));
+        // Smooth scroll function
+        function scrollToSection(sectionId) {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
 
-  // Seeded randomness
-  let s = seed>>>0; const rnd = () => (s = (s*1664525 + 1013904223)>>>0, (s & 0xffff)/0xffff);
+        // Initialize particles on load
+        window.addEventListener('load', createParticles);
 
-  // Params per variant (density/swing/jitter/pitch)
-  const bars = 8; const swing = (rnd()*0.18); const density = 0.30 + rnd()*0.25; const jitter = rnd()*0.08; const semi = Math.round((rnd()*2-1)*2); // ±2 semitones
-
-  // Schedule events (re-sequenced grains)
-  const ev=[]; const secPerBeat = 60/(bpm||100);
-  function pickOffset(){ return rnd()*Math.max(0.01, srcBuf.duration - 0.12); }
-  function t(b, sixteenth){
-    const base = `${b}:${Math.floor(sixteenth/4)}:${sixteenth%4}`;
-    // swing: delay odd 8ths a bit
-    const isOdd8 = (sixteenth%8)>=4; const swingMs = isOdd8? swing*secPerBeat*1000*0.5 : 0;
-    return { time: base, swingMs };
-  }
-  for(let b=0;b<bars;b++){
-    // backbeat accents on new pattern
-    ev.push({ ...t(b,4),  which:'A', off:pickOffset(), rate: 1 + (rnd()*0.02-0.01) });
-    ev.push({ ...t(b,12), which:'B', off:pickOffset(), rate: 1 + (rnd()*0.02-0.01) });
-    for(let s16=0;s16<16;s16++){
-      if (Math.random()<density){
-        const sel = rnd(); const which = sel<0.4?'C': sel<0.8?'D':'A';
-        ev.push({ ...t(b,s16), which, off: pickOffset(), rate: 1 + (rnd()*0.04-0.02) });
-      }
-    }
-  }
-
-  // Pitch nudge (quantized to semitones via playbackRate)
-  const pitchRate = Math.pow(2, semi/12);
-
-  const part = new Tone.Part((time, d)=>{
-    const when = time + (d.swingMs||0)/1000;
-    const startAt = Math.max(0, d.off);
-    const rate = (d.rate||1) * pitchRate;
-    if (d.which==='A') gA.start(when, startAt, 0.12, rate);
-    if (d.which==='B') gB.start(when, startAt, 0.12, rate);
-    if (d.which==='C') gC.start(when, startAt, 0.10, rate);
-    if (d.which==='D') gD.start(when, startAt, 0.10, rate);
-  }, ev).start(0);
-
-  // Record this variant
-  const rec = new Tone.Recorder();
-  Tone.getDestination().connect(rec);
-  Tone.Transport.start();
-  const seconds = (bars*4) * (60/(bpm||100));
-  rec.start();
-  const blob = await new Promise(resolve=> setTimeout(async ()=> resolve(await rec.stop()), (seconds+0.25)*1000));
-  Tone.Transport.stop(); part.dispose(); [gA,gB,gC,gD].forEach(g=> { try{ g.stop(); g.dispose(); }catch(_){} });
-
-  const url = URL.createObjectURL(blob);
-  return { url, blob };
-}
-
-// Compute features from a WAV Blob by decoding it
-async function featuresFromBlob(blob){
-  const ab = await blob.arrayBuffer();
-  const buf = await AC.decodeAudioData(ab);
-  const slim = firstSeconds(buf, Math.min(8, buf.duration));
-  return await featuresFromBuffer(slim);
-}
-
-// Generate 5 variants sequentially with anti-recognition guard
-async function generateFive(){
-  variantsEl.innerHTML = '';
-  variantsEl.classList.remove('hidden');
-  const rows = [];
-  for(let i=1;i<=NUM_VARIANTS;i++){
-    const row = document.createElement('div');
-    row.className = 'glass rounded-xl p-3 row';
-    row.innerHTML = `<div class="text-sm">Option ${i}</div>
-      <div class="flex gap-2">
-        <button class="btn" data-play>Play</button>
-        <a class="btn link" data-dl download="ghostloop_option-${i}.wav">Download</a>
-      </div>`;
-    variantsEl.appendChild(row);
-    rows.push(row);
-  }
-
-  // sequential render
-  for(let i=1;i<=NUM_VARIANTS;i++){
-    db(`Rendering ${i}/${NUM_VARIANTS}…`);
-    let tries=0, final=null, feat=null;
-    while(tries<=MAX_RETRIES){
-      const seed = (Math.random()*1e9)|0;
-      const { url, blob } = await renderVariant(i, seed);
-      feat = await featuresFromBlob(blob);
-      if (!isTooSimilar(feat, srcFeat)) { final = {url, blob}; break; }
-      URL.revokeObjectURL(url); tries++;
-    }
-    if (!final){ // accept last try anyway to avoid blocking
-      const { url, blob } = await renderVariant(i, (Math.random()*1e9)|0);
-      final = { url, blob };
-    }
-    // wire controls
-    const row = rows[i-1];
-    const playBtn = row.querySelector('[data-play]');
-    const dl = row.querySelector('[data-dl]');
-    dl.href = final.url;
-
-    // simple player per row (use HTMLAudioElement to avoid reusing Transport)
-    const audio = new Audio(final.url);
-    activePlayers.set(i, { playing:false, stop:()=>{ audio.pause(); audio.currentTime=0; activePlayers.get(i).playing=false; playBtn.textContent='Play'; } });
-
-    playBtn.onclick = ()=>{
-      // stop all others
-      for(const [k,p] of activePlayers){ if(k!==i && p.playing){ p.stop(); } }
-      const p = activePlayers.get(i);
-      if (!p.playing){ audio.currentTime=0; audio.play(); p.playing=true; playBtn.textContent='Stop';
-        audio.onended = ()=>{ p.playing=false; playBtn.textContent='Play'; };
-      } else { p.stop(); }
-    };
-  }
-  db('Done. Pick your favorite.');
-}
-
-// ====== Main pipeline ======
-async function processFile(f){
-  db('Decoding…');
-  const ab = await f.arrayBuffer();
-  const buf = await AC.decodeAudioData(ab);
-  srcBuf = firstSeconds(buf, MAX_SECS);
-  const slim = await resampleTo(srcBuf, 22050);
-  db('Analyzing…');
-  try { bpm = await detectBPM(slim); } catch(_) { bpm = 100; }
-  srcFeat = await featuresFromBuffer(slim);
-  db(`BPM ${bpm} — generating 5 options…`);
-  await generateFive();
-}
-
-// ====== Minimal UI wiring ======
-dz.addEventListener('click', ()=> file.click());
-file.addEventListener('change', e=> handleDropFiles(e.target.files));
-dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
-dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
-dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); const dt=e.dataTransfer; if(dt?.files&&dt.files.length) handleDropFiles(dt.files); else db('Drag the actual audio file (export from Splice first).'); });
-function handleDropFiles(files){
-  const f = files?.[0];
-  if(!f){ db('No audio file detected.'); return; }
-  if(!f.type.startsWith('audio') && !/\.(wav|aif|aiff|mp3|flac|m4a)$/i.test(f.name||'')){
-    db('Not an audio file. Use .wav/.aif/.mp3'); return; }
-  // reset previous
-  for(const [,p] of activePlayers){ try{ p.stop(); }catch(_){} }
-  activePlayers.clear();
-  if (variantsEl){ variantsEl.innerHTML=''; variantsEl.classList.add('hidden'); }
-  processFile(f).catch(e=>{ console.error(e); db('Error while processing. Try a shorter loop (4–16 bars).'); });
-}
-</script>
+        // Simple form handling (you'll want to connect this to your backend)
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Thank you! I\'ll send your free preview within 24 hours. Check your email soon.');
+            this.reset();
+        });
+    </script>
 </body>
-</html>
+</html>'''
+
+# Save the HTML file
+with open('meditation_music_landing_page.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print("✅ Landing page created successfully!")
+print("\nFile saved as: meditation_music_landing_page.html")
+print("\nKey features included:")
+print("- Minimalist, Endel-inspired design with animated particles")
+print("- Clear value proposition for meditation professionals")
+print("- 24-hour preview guarantee prominently featured")
+print("- Professional service breakdown with binaural frequencies")
+print("- Sample portfolio section")
+print("- Transparent pricing with packages")
+print("- Trust signals and satisfaction guarantee")
+print("- Mobile-responsive design")
+print("- Smooth animations and interactions")
+print("\nDesign elements:")
+print("- Dark, calming color scheme (inspired by Endel)")
+print("- Gradient accents in teal and purple")
+print("- Floating particle animation for meditation aesthetic")
+print("- Clean typography and generous white space")
+print("- Professional CTAs throughout")
